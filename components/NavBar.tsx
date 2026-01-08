@@ -33,7 +33,7 @@ export default function NavBar() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 w-full shadow-md shadow-black/10 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-16 items-center justify-between gap-3">
       <Link href='/' className="flex items-center gap-3 relative w-28 h-16">

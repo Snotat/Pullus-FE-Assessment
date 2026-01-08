@@ -97,7 +97,7 @@ export default function ViewNote() {
           <div className="flex items-center gap-2">
             <Link
               href={`/edit/${note.id}`}
-              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-slate-500  hover:text-green-400 transition-all"
             >
               <Pencil size={16} />
               Edit
@@ -105,7 +105,7 @@ export default function ViewNote() {
 
             <button
               onClick={handleDelete}
-              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:text-red-500 transition-all"
             >
               <Trash2 size={16} />
               Delete

@@ -15,7 +15,9 @@ import {
   Wifi,
   WifiOff,
   Search,
-  X
+  X,
+  Clock10,
+  Clock10Icon
 } from 'lucide-react';
 import logo from '../public/pullus_notebook_logo.png'
 import { useNetworkState } from 'react-use';
@@ -166,14 +168,14 @@ const refreshUI = async () => {
 
       {filteredNotes.length > 0 ? (
         <div className="space-y-1">
-          <div className="hidden md:grid grid-cols-12 border-b border-slate-100 px-6 pb-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+          <div className="hidden md:grid grid-cols-12 border-b border-slate-500 px-6 pb-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
             <div className="col-span-6">Details</div>
             <div className="col-span-2">Cloud</div>
             <div className="col-span-2 text-center">Modified</div>
             <div className="col-span-2 text-right">Actions</div>
           </div>
 
-          <ul className="divide-y divide-slate-50">
+          <ul className="divide-y divide-slate-200">
             {filteredNotes.map((note) => (
               <li 
                 key={note.id} 
@@ -198,20 +200,21 @@ const refreshUI = async () => {
                   </div>
                 </div>
 
-                <div className="md:col-span-2 text-center text-[10px] font-bold text-slate-400 uppercase">
-                  {new Date(note.updatedAt).toLocaleString(undefined, { 
+                <div className="md:col-span-2 text-start text-[10px] font-bold text-slate-400 uppercase flex flex-row gap-1">
+                  <Clock className='w-4 h-4' />
+                 <span>{new Date(note.updatedAt).toLocaleString(undefined, { 
   month: 'short', 
   day: 'numeric',
   hour: '2-digit',
   minute: '2-digit'
-})}
+})}</span> 
                 </div>
 
                 <div className="md:col-span-2 flex justify-end gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); router.push(`/edit/${note.id}`); }} className="p-3  text-slate-300 hover:text-[#80c341] transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); router.push(`/edit/${note.id}`); }} className="p-3  text-slate-400 hover:text-[#80c341] transition-colors">
                     <Pencil size={18} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }} className="p-3 text-slate-300 hover:text-red-500 transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }} className="p-3 text-slate-400 hover:text-red-500 transition-colors">
                     <Trash2 size={18} />
                   </button>
                 </div>
