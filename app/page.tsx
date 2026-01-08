@@ -1,135 +1,223 @@
 'use client';
 
+import { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  FileText,
   Pencil,
   Trash2,
-  Database,
-  HardDrive,
+  CloudCheck,
+  CloudUpload,
   Clock,
+  Plus,
+  FileText,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Search,
+  X
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-
-type Note = {
-  id: string;
-  title: string;
-  excerpt: string;
-  updatedAt: string;
-  createdAt: string;
-  saved: boolean;
-};
-
-const notes: Note[] = [
-  {
-    id: '1',
-    title: 'Note taking web app',
-    excerpt:
-      'Best Notetaking web app in the world,Best Notetaking web app in the world,Best Notetaking web app in the world,Best Notetaking web app in the world,Best Notetaking web app in the world,Best Notetaking web app in the world',
-    updatedAt: '2026-01-06',
-    createdAt: '2026-01-04',
-    saved: true,
-  },
-  {
-    id: '2',
-    title: 'Note taking app by Snotat',
-    excerpt:
-      'Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,Note taking app by Snotat,',
-    updatedAt: '2026-01-07',
-    createdAt: '2026-01-05',
-    saved: false,
-  },
-];
+import { useNetworkState } from 'react-use';
+import { 
+  getAllNotes, 
+  deleteNoteLocally, 
+  syncNotesWithBackend, 
+  type Note 
+} from './utils/DB';
+import { toast } from 'react-toastify';
 
 export default function Home() {
-const router = useRouter();
+  const router = useRouter();
+  const { online } = useNetworkState();
+  const wasOffline = useRef(false); 
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (online === undefined) return;
+
+    if (!online) {
+      wasOffline.current = true;
+      toast.error('Offline Mode: Changes saved locally', {
+        toastId: 'offline',
+        autoClose: false,
+      });
+    } else {
+      toast.dismiss('offline');
+      if (wasOffline.current) {
+        toast.success('Back online! Syncing changes...');
+        wasOffline.current = false;
+      }
+    }
+  }, [online]);
+
+  const refreshUI = async () => {
+    const data = await getAllNotes();
+    console.log('data', data)
+    setNotes(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const performSync = async () => {
+      await refreshUI(); 
+      
+      if (online) {
+        setIsSyncing(true);
+        try {
+          await syncNotesWithBackend();
+          if (isMounted) await refreshUI();
+        } finally {
+          if (isMounted) setIsSyncing(false);
+        }
+      }
+    };
+
+    performSync();
+    return () => { isMounted = false; };
+  }, [online]);
+
+  const filteredNotes = useMemo(() => {
+    const search = searchQuery.toLowerCase();
+    return notes
+      .filter(n => 
+        n.title.toLowerCase().includes(search) || 
+        n.content.toLowerCase().includes(search)
+      )
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [notes, searchQuery]);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Move this note to trash?')) {
+      await deleteNoteLocally(id);
+      setNotes(prev => prev.filter(n => n.id !== id));
+      toast.info('Note moved to trash');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col bg-white items-center justify-center min-h-screen text-slate-400">
+        <RefreshCw size={40} className="mb-4 animate-spin text-[#80c341]" />
+        <p className="font-black uppercase tracking-widest text-[10px]">Loading Notes...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 bg-white h-full">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            Notes
-          </h1>
-          <p className="text-sm text-slate-500">
-            {notes.length} {notes.length === 1 ? 'note' : 'notes'}
-          </p>
+    <div className="mx-auto max-w-7xl px-6 py-8 bg-white min-h-screen">
+      
+      <div className="flex items-center justify-between mb-8">
+        <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] ${online ? 'text-emerald-500' : 'text-amber-500'}`}>
+          {online ? <Wifi size={14} /> : <WifiOff size={14} />}
+          {online ? 'System Online' : 'Offline Mode'}
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {online && (
+            <button 
+              onClick={() => { setIsSyncing(true); syncNotesWithBackend().then(refreshUI).finally(() => setIsSyncing(false)); }}
+              disabled={isSyncing}
+              className="text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-1 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+              {isSyncing ? 'Syncing' : 'Sync Now'}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="hidden md:grid grid-cols-13 border-b px-1 pb-1 text-xs font-semibold text-slate-500">
-        <div className="col-span-1">S.N</div>
-        <div className="col-span-6">Title</div>
-        <div className="col-span-2">Status</div>
-        <div className="col-span-2">Created/Edited</div>
-        <div className="col-span-2 text-right">Actions</div>
+      <div className="mb-12">
+        <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-6">Notes</h1>
+        
+        <div className="relative max-w-xl">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <input 
+            type="text"
+            placeholder="Search notes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-100 border-none rounded-sm py-2 pl-8 pr-6 text-lg focus:ring-4 focus:ring-green-100 focus:bg-white  transition-all outline-none font-medium "
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 bg-slate-200 rounded-full">
+              <X size={12} />
+            </button>
+          )}
+        </div>
       </div>
-      <ul className="divide-y">
-        {notes.map(note => (
-          <Link
-           href={`/view/${note.id}`}
-            key={note.id}
-            className="group grid grid-cols-1 md:grid-cols-12 gap-3 px-1 py-2 hover:bg-slate-50 transition"
-          >
-            <div
-             
-              className="md:col-span-6 flex gap-1"
-            >
-              <div>
-                <h1 className="font-mono text-4xl pr-3 text-slate-800 ">
-                  {note.id}
-                </h1>
-              </div>
-              <div>
-                <h2 className="font-semibold  text-slate-800 group-hover:underline">
-                  {note.title}
-                </h2>
-                <p className="text-sm text-slate-500 line-clamp-1">
-                  {note.excerpt}
-                </p>
-              </div>
-            </div>
-            <div className="md:col-span-2 flex items-center gap-1 text-sm text-slate-600">
-              {note.saved ? (
-                <>
-                  <Database size={14} className="text-emerald-500" />
-                  Saved
-                </>
-              ) : (
-                <>
-                  <HardDrive size={14} className="text-amber-500" />
-                  Local
-                </>
-              )}
-            </div>
-            <div className="md:col-span-2 flex items-center gap-1 text-sm text-slate-500">
-              <Clock size={14} />
-              {new Date(note.updatedAt).toLocaleDateString()}
-            </div>
-            <div className="md:col-span-2 flex items-center justify-end gap-1">
-              <button
-              onClick={()=>router.push(`/edit/${note.id}`)}
-                
-                className=" p-2 text-slate-500 hover:text-yellow-500"
+
+      {filteredNotes.length > 0 ? (
+        <div className="space-y-1">
+          <div className="hidden md:grid grid-cols-12 border-b border-slate-100 px-6 pb-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            <div className="col-span-6">Details</div>
+            <div className="col-span-2">Cloud</div>
+            <div className="col-span-2 text-center">Modified</div>
+            <div className="col-span-2 text-right">Actions</div>
+          </div>
+
+          <ul className="divide-y divide-slate-50">
+            {filteredNotes.map((note) => (
+              <li 
+                key={note.id} 
+                className="group grid grid-cols-1 md:grid-cols-12 items-center gap-4 px-6 py-6 hover:bg-slate-50 transition-all cursor-pointer rounded-xl"
+                onClick={() => router.push(`/view/${note.id}`)}
               >
-                <Pencil size={16} />
-              </button>
-<button
-              onClick={()=>router.push(`/del/${note.id}`)}
-                className=" p-2 text-slate-500 hover:text-red-500"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </Link>
-        ))}
-      </ul>
-      {notes.length === 0 && (
-        <div className="mt-14 text-center text-slate-400">
-          <p className="text-lg font-medium">No notes yet</p>
-          <p className="text-sm">
-            Save your notes
+                <div className="md:col-span-6">
+                  <h2 className="text-xl font-bold text-slate-800 group-hover:text-green-600 transition-colors line-clamp-1 italic">
+                    {note.title || 'Untitled'}
+                  </h2>
+                  <p className="text-sm text-slate-400 line-clamp-1 mt-1 font-medium italic">
+                    {note.content || 'No content...'}
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                    note.sync_status === 'synced' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {note.sync_status === 'synced' ? <CloudCheck size={12} /> : <CloudUpload size={12} />}
+                    {note.sync_status}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 text-center text-[10px] font-bold text-slate-400 uppercase">
+                  {new Date(note.updatedAt).toLocaleString(undefined, { 
+  month: 'short', 
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})}
+                </div>
+
+                <div className="md:col-span-2 flex justify-end gap-1">
+                  <button onClick={(e) => { e.stopPropagation(); router.push(`/edit/${note.id}`); }} className="p-3  text-slate-300 hover:text-[#80c341] transition-colors">
+                    <Pencil size={18} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }} className="p-3 text-slate-300 hover:text-red-500 transition-colors">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-32 bg-slate-100 rounded-sm border-2 border-dashed border-slate-100">
+         
+          <p className="text-slate-400 font-black uppercase tracking-widest text-[20px] mb-3">
+            {searchQuery ? 'No Note found' : 'Empty Notebook!'}
           </p>
+             <Link
+                        href='/create'
+                        className="mb-4 w-fit mx-auto  gap-1 rounded-sm bg-[#80c341] px-4 py-2 text-lg font-bold text-white shadow hover:bg-green-700 active:scale-95 transition"
+                      >
+                        + Create
+                      </Link>
         </div>
       )}
     </div>

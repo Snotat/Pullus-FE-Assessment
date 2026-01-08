@@ -1,15 +1,22 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Save,
   Loader2,
-  Database,
-  HardDrive,
+  CloudCheck,
+  CloudUpload,
   CloudOff,
+  AlertCircle,
 } from 'lucide-react';
+
+import {
+  getNoteById,
+  saveNoteLocally,
+  type Note,
+} from '../../utils/DB';
 
 const subscribe = (callback: () => void) => {
   window.addEventListener('online', callback);
@@ -20,121 +27,122 @@ const subscribe = (callback: () => void) => {
   };
 };
 
-type Note = {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  saved: boolean;
-};
-
-const notedemo: Note = {
-  id: '1',
-  title: 'Notetaking web app',
-  content: `
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-Best Notetaking app in the world. 
-  `,
-  createdAt: '2026-01-04',
-  updatedAt: '2026-01-05',
-  saved: true,
-};
-
 export default function EditNotePage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const isOnline = useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
 
-  const [note, setNote] = useState(notedemo);
+  const [note, setNote] = useState<Note | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!dirty) return;
+    let isMounted = true;
+    const loadNote = async () => {
+      if (!id) return;
+      const storedNote = await getNoteById(id);
+      if (isMounted) {
+        if (storedNote) setNote(storedNote);
+        else router.push('/');
+        setLoading(false);
+      }
+    };
+    loadNote();
+    return () => { isMounted = false; };
+  }, [id, router]);
 
-    const timeout = setTimeout(() => {
+  useEffect(() => {
+    if (!dirty || !note) return;
+
+    const timeout = setTimeout(async () => {
       setSaving(true);
+      const updatedNote: Note = {
+        ...note,
+        updatedAt: new Date().toISOString(),
+        sync_status: 'pending', 
+      };
 
-      setTimeout(() => {
-        setNote(prev => ({
-          ...prev,
-          updatedAt: new Date().toISOString(),
-          saved: isOnline,
-        }));
-        setSaving(false);
-        setDirty(false);
-      }, 800);
-    }, 1000);
+      await saveNoteLocally(updatedNote);
+      setSaving(false);
+      setDirty(false);
+    }, 1500);
 
     return () => clearTimeout(timeout);
-  }, [dirty, isOnline]);
+  }, [dirty, note]);
+
+  const handleSaveAndClose = async () => {
+    if (!note) return;
+    
+    setSaving(true);
+    const finalNote: Note = {
+      ...note,
+      updatedAt: new Date().toISOString(),
+      sync_status: 'pending',
+    };
+
+    try {
+      await saveNoteLocally(finalNote, true);
+      router.push('/');
+    } catch (error) {
+      console.error("Failed to save and close:", error);
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex h-screen flex-col items-center justify-center text-slate-500">
+      <Loader2 className="animate-spin mb-2 text-[#80c341]" />
+      <p className="text-sm font-medium">Opening editor...</p>
+    </div>
+  );
+
+  if (!note) return null;
 
   return (
-    <div className="w-full px-[3%]  py-6 bg-white text-gray-700">
-        <div className="mx-auto max-w-3xl">
-      <div className="mb-6 flex items-center justify-between">
-        <Link
-          href={`/`}
-          className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800"
-        >
-          <ArrowLeft size={16} />
-          Back to note
-        </Link>
-        <div className="flex items-center gap-2 text-sm">
-          {saving ? (
-            <>
-              <Loader2 size={14} className="animate-spin" />
-              Saving…
-            </>
-          ) : dirty ? (
-            <>
-              <Save size={14} />
-              Unsaved changes
-            </>
-          ) : note.saved ? (
-            <>
-              <Database size={14} className="text-emerald-500" />
-              Saved
-            </>
-          ) : (
-            <>
-              <HardDrive size={14} className="text-amber-500" />
-              Local only
-              {!isOnline && <CloudOff size={14} className="ml-1" />}
-            </>
-          )}
+    <div className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <div className="mb-10 flex items-center justify-between">
+          <Link href="/" className="group flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-green-600 transition-colors">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+            All Notes
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-tighter transition-all ${
+              saving || dirty ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+            }`}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <CloudCheck size={14} />}
+              {saving ? 'Saving...' : dirty ? 'Unsaved Changes' : 'Synced'}
+            </div>
+            {!isOnline && <CloudOff size={16} className="text-red-500" />}
+          </div>
         </div>
+
+        <div className="space-y-6">
+          <input
+            value={note.title}
+            onChange={e => { setNote(prev => prev ? { ...prev, title: e.target.value } : null); setDirty(true); }}
+            placeholder="Title..."
+            className="w-full bg-slate-50 rounded-sm px-6 py-4 text-2xl font-black focus:bg-white focus:ring-4 focus:ring-green-50 border-none outline-none transition-all"
+          />
+          <textarea
+            value={note.content}
+            onChange={e => { setNote(prev => prev ? { ...prev, content: e.target.value } : null); setDirty(true); }}
+            placeholder="What's on your mind?"
+            rows={5}
+            className="w-full bg-slate-50 rounded-sm px-6 py-4 text-lg leading-relaxed focus:bg-white focus:ring-4 focus:ring-green-50 border-none outline-none resize-none transition-all"
+          />
+        </div>
+
+        <button
+          onClick={handleSaveAndClose}
+          disabled={saving}
+          className="mt-8 w-full rounded-sm bg-[#80c341] py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl hover:bg-green-600 transition-all active:scale-95 disabled:opacity-50"
+        >
+          {saving ? 'Syncing...' : 'Save & Finish'}
+        </button>
       </div>
-      <section className="space-y-4">
-        <input
-          value={note.title}
-          onChange={e => {
-            setNote({ ...note, title: e.target.value });
-            setDirty(true);
-          }}
-          placeholder="Note title"
-          className="w-full bg-transparent text-2xl font-bold border border-gray-600 px-3"
-        />
-        <textarea
-          value={note.content}
-          onChange={e => {
-            setNote({ ...note, content: e.target.value });
-            setDirty(true);
-          }}
-          placeholder="Start writing..."
-          rows={5}
-          className=" w-full
-            bg-transparent
-            text-base leading-relaxed px-3 h border border-gray-600
-          "
-        />
-        <button   className="mb-4 w-full  gap-1 rounded-sm bg-green-500 px-2 py-2 text-lg font-semibold text-white shadow hover:bg-green-700 active:scale-95 transition">Update Note</button>
-      </section>
-    </div></div>
+    </div>
   );
 }
