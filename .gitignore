@@ -9,6 +9,9 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
 
 # testing
 /coverage

@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   
   title: "Pullus Notebook",
   description: "Frontend Development Assessment",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "My Next App",
+  },
   icons: {
     icon: '/favicon.ico',
     shortcut: '/shortcut-icon.png',

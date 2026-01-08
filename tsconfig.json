@@ -29,7 +29,8 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts","additional.d.ts",
-    "globals.css"
+    "globals.css",
+    "next-pwa.d.ts"
   ],
   "exclude": ["node_modules"]
 }
