@@ -14,7 +14,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
+if (typeof window !== 'undefined') {
+  console.log(
+    "%c Built by Shuaib Nurudeen Olawale %c https://snotat.netlify.app for pullus-africa frontend dev assessment",
+    "color: white; background: #10b981; padding: 5px 10px; border-radius: 5px; font-weight: bold;",
+    "color: #10b981; text-decoration: underline;"
+  );
+}
 export const metadata: Metadata = {
   
   title: "Pullus Notebook",
