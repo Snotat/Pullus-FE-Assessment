@@ -53,12 +53,19 @@ export default function Home() {
     }
   }, [online]);
 
-  const refreshUI = async () => {
+const refreshUI = async () => {
     const data = await getAllNotes();
-    console.log('data', data)
-    setNotes(data);
+    
+    const sortedData = [...data].sort((a, b) => {
+      const dateA = new Date(a.updatedAt).getTime();
+      const dateB = new Date(b.updatedAt).getTime();
+      return dateB - dateA;
+    });
+
+    console.log('Sorted data', sortedData);
+    setNotes(sortedData);
     setLoading(false);
-  };
+};
 
   useEffect(() => {
     let isMounted = true;
