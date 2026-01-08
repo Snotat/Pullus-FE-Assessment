@@ -10,7 +10,6 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["next-pwa"], 
 };
 
 export default withPWA(nextConfig);
