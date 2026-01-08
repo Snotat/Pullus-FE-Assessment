@@ -17,6 +17,7 @@ import {
   Search,
   X
 } from 'lucide-react';
+import logo from '../public/pullus_notebook_logo.png'
 import { useNetworkState } from 'react-use';
 import { 
   getAllNotes, 
@@ -25,6 +26,7 @@ import {
   type Note 
 } from './utils/DB';
 import { toast } from 'react-toastify';
+import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -109,6 +111,10 @@ const refreshUI = async () => {
   if (loading) {
     return (
       <div className="flex flex-col bg-white items-center justify-center min-h-screen text-slate-400">
+          <Link href='/' className="flex items-center gap-3 relative w-28 h-16">
+          
+<Image alt='pullus logo' src={logo} fill className='object-contain'  />
+          </Link>
         <RefreshCw size={40} className="mb-4 animate-spin text-[#80c341]" />
         <p className="font-black uppercase tracking-widest text-[10px]">Loading Notes...</p>
       </div>
